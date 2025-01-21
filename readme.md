@@ -1,5 +1,5 @@
 # CT dose secondary capture collection program
-## This programe just for GE CT simulator
+## This program just for GE CT simulator
 
 Version 1.0
 
