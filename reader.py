@@ -221,7 +221,7 @@ try:
     print(f'讀取的目錄是{metadata['path']}')
     output=processing(metadata)
     
-    if output == 0: 
+    if type(output) == int: 
         print('無資料可用或使用者取消...')
         
     else:
