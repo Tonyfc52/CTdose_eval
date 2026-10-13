@@ -11,9 +11,7 @@ a = Analysis(
     ['reader.py'],
     pathex=[],
     binaries=[],
-    datas=[
-        ('metadata.json', '.'),  # 將預設設定檔一併打包進來 (若存在)
-    ],
+    datas=[],
     hiddenimports=[
         'pydicom',
         'pydicom.encoders',

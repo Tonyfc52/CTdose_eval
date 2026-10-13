@@ -11,11 +11,17 @@ import subprocess
 from pathlib import Path
 
 # ==========================================
-# 自動鎖定腳本所在目錄為工作目錄（防路徑跑掉）
+# 辨識環境：如果是 PyInstaller 打包的 exe，使用 sys.executable 所在真實目錄
+# 如果是一般 .py 腳本執行，使用 __file__ 所在目錄
+# 避免抓到 Windows AppData\Local\Temp 臨時解壓縮目錄
 # ==========================================
-SCRIPT_DIR = Path(__file__).resolve().parent
+if getattr(sys, "frozen", False):
+    APP_DIR = Path(sys.executable).resolve().parent
+else:
+    APP_DIR = Path(__file__).resolve().parent
+
 try:
-    os.chdir(SCRIPT_DIR)
+    os.chdir(APP_DIR)
 except Exception:
     pass
 
@@ -43,24 +49,24 @@ from tkinter.scrolledtext import ScrolledText
 
 
 # ==========================================
-# 常數與預設配置（使用絕對路徑）
+# 常數與預設配置（使用絕對路徑 APP_DIR）
 # ==========================================
 DEFAULT_PATH = r"\\Aria15sql\DICOM\CT_DOSE"
-CONFIG_FILE = str(SCRIPT_DIR / "metadata.json")
-DEFAULT_DB_PATH = str(SCRIPT_DIR / "CTdose_eval.db")
-OUTPUT_DIR = str(SCRIPT_DIR / "output")
+CONFIG_FILE = str(APP_DIR / "metadata.json")
+DEFAULT_DB_PATH = str(APP_DIR / "CTdose_eval.db")
+OUTPUT_DIR = str(APP_DIR / "output")
 
 
 def resolve_db_path(custom_path=None):
     """
     智能解析資料庫路徑：
-    優先檢查自訂路徑 -> 腳本所在目錄的 CTdose_eval.db -> 當前執行目錄的 CTdose_eval.db
+    優先檢查自訂路徑 -> exe/腳本所在同目錄的 CTdose_eval.db -> 當前執行目錄的 CTdose_eval.db
     """
     if custom_path and os.path.exists(custom_path):
         return str(Path(custom_path).resolve())
 
     candidates = [
-        SCRIPT_DIR / "CTdose_eval.db",
+        APP_DIR / "CTdose_eval.db",
         Path.cwd() / "CTdose_eval.db",
         Path("CTdose_eval.db").resolve(),
     ]
@@ -747,7 +753,7 @@ class CTDoseApp:
         self.log_text = ScrolledText(log_frame, wrap=tk.WORD, font=("Menlo", 10))
         self.log_text.pack(fill=tk.BOTH, expand=True)
 
-        self.log(f"系統啟動。腳本目錄: {SCRIPT_DIR}")
+        self.log(f"系統啟動。程式所在目錄: {APP_DIR}")
         self.log(f"目前鎖定資料庫路徑: {self.db_path_var.get()}")
         self.log(f"預設工作母目錄: {self.path_var.get()}")
 
@@ -1018,7 +1024,7 @@ class CTDoseApp:
     def _choose_db_file(self):
         """讓使用者瀏覽並自訂 CTdose_eval.db 的檔案位置"""
         current = self.db_path_var.get()
-        init_dir = str(Path(current).parent) if os.path.exists(current) else str(SCRIPT_DIR)
+        init_dir = str(Path(current).parent) if os.path.exists(current) else str(APP_DIR)
         selected = filedialog.askopenfilename(
             title="請選擇 CTdose_eval.db 資料庫檔案",
             initialdir=init_dir,
