@@ -1,0 +1,10 @@
+name: ctdose
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.10
+  - pydicom>=2.4.0
+  - pandas>=2.0.0
+  - matplotlib>=3.8.0
+  - pip

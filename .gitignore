@@ -1,0 +1,20 @@
+# 保護病患醫療隱私與本地資料庫 (不推送至 GitHub)
+*.db
+*.sqlite
+dicom/
+output/
+*.ipynb
+
+# Python 快取
+__pycache__/
+*.pyc
+*.pyo
+
+# 系統隱私與金鑰
+.DS_Store
+.webui_secret_key
+.env
+
+# 打包暫存與成果
+build/
+dist/
