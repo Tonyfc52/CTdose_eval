@@ -1525,9 +1525,100 @@ class CTDoseApp:
 
 
 # ==========================================
+# CLI 命令列模式支援 (--update)
+# ==========================================
+def setup_cli_console():
+    """在 Windows GUI 模式下附加至呼叫端終端機 (cmd/powershell) 以正常輸出文字"""
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            # 附加至父行程終端機 (ATTACH_PARENT_PROCESS = -1)
+            if ctypes.windll.kernel32.AttachConsole(-1):
+                sys.stdout = open("CONOUT$", "w", encoding="utf-8", buffering=1)
+                sys.stderr = open("CONOUT$", "w", encoding="utf-8", buffering=1)
+        except Exception:
+            pass
+
+
+def run_cli_update():
+    """CLI 模式：讀取 metadata.json 預設母目錄，解析 DICOM 並更新資料庫 (不輸出 CSV)"""
+    setup_cli_console()
+    print("=" * 60)
+    print("  CT Dose 輻射劑量自動化評估系統 - CLI 自動更新模式")
+    print("=" * 60)
+
+    # 1. 讀取設定檔
+    meta = load_metadata()
+    target_dir = meta.get("path", DEFAULT_PATH)
+    db_path = resolve_db_path()
+
+    print(f"[*] 工作母目錄: {target_dir}")
+    print(f"[*] 資料庫路徑: {db_path}")
+
+    # 2. 檢查母目錄是否存在
+    if not os.path.exists(target_dir):
+        print(f"\n[錯誤] 工作母目錄不存在或網路磁碟未連線：\n{target_dir}")
+        print("請確認網路連線，或在 metadata.json 中修改 path 設定。")
+        sys.exit(1)
+
+    # 3. 搜尋符合條件之檔案 (SC.*.DCM, 最多 3 層)
+    print("\n[*] 正在掃描符合條件之 DICOM 報告 (SC.*.DCM，最多 3 層子目錄)...")
+    files = find_dose_dicom_files(root_dir=target_dir, max_depth=3, log_func=print)
+
+    if not files:
+        print("[提示] 未在該目錄下找到符合開頭為 'SC.' 且結尾為 '.DCM' 的檔案。")
+        sys.exit(0)
+
+    # 4. 解析 DICOM 檔案
+    print(f"\n[*] 開始解析 {len(files)} 個檔案...")
+    last_pct = [-1]
+    def cli_progress(curr, total):
+        pct = int(curr / total * 100)
+        if pct % 10 == 0 and pct != last_pct[0]:
+            last_pct[0] = pct
+            print(f"    處理進度: {curr}/{total} ({pct}%)")
+
+    df = parse_dicom_files(file_list=files, log_func=None, progress_func=cli_progress)
+
+    if df.empty:
+        print("[提示] DICOM 解析完成，但無有效 SCREEN SAVE 劑量資料。")
+        sys.exit(0)
+
+    # 5. 寫入 / 更新 SQLite 資料庫 (自動去重，不輸出 CSV)
+    print("\n[*] 寫入 SQLite 資料庫 (CTdose_eval.db)...")
+    ct_db = backup_sql(df, db_path=db_path, log_func=print)
+
+    # 6. 更新 metadata.json 的最後執行日期
+    meta["last_reading_date"] = str(datetime.date.today())
+    save_metadata(meta)
+    print(f"[*] 已更新 metadata.json 最後讀取日期: {meta['last_reading_date']}")
+
+    print("=" * 60)
+    print(f"[完成] 資料庫更新成功！資料庫目前總累積: {len(ct_db)} 筆紀錄。")
+    print("=" * 60)
+    sys.exit(0)
+
+
+# ==========================================
 # 程式進入點
 # ==========================================
 def main():
+    args = sys.argv[1:]
+
+    # 判斷 CLI 參數
+    if "--update" in args or "-u" in args:
+        run_cli_update()
+        return
+    elif "--help" in args or "-h" in args:
+        setup_cli_console()
+        print("CT Dose 輻射劑量自動化評估系統")
+        print("使用方式:")
+        print("  ctdose.exe            啟動 GUI 視窗介面")
+        print("  ctdose.exe --update   僅更新資料庫 (讀取預設母目錄，不產生 CSV)")
+        print("  ctdose.exe --help     顯示此說明訊息")
+        sys.exit(0)
+
+    # 預設啟動 GUI 視窗
     root = tk.Tk()
     app = CTDoseApp(root)
     root.mainloop()

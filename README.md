@@ -88,16 +88,24 @@ cd CTdose_eval
 # 2. 安裝套件
 pip install -r requirements.txt
 
-# 3. 啟動系統
+### 3. 使用方式 (GUI 介面 與 CLI 命令列模式)
+
+#### 模式一：GUI 圖形介面（預設）
+直接執行（或在 Windows 雙擊 `CTDose.exe`）：
+```bash
 python reader.py
+# 或在 Windows 執行:
+CTDose.exe
 ```
 
-#### 使用 Conda：
+#### 模式二：CLI 命令列自動更新模式（不開視窗、不輸出 CSV）
+適合設定於 Windows 工作排程器（Task Scheduler）定時自動排程執行：
 ```bash
-conda env create -f environment.yml
-conda activate ctdose
-python reader.py
+python reader.py --update
+# 或在 Windows 執行:
+CTDose.exe --update
 ```
+* **行為**：直接讀取 `metadata.json` 設定的母目錄，掃描 `SC.*.DCM` 報告，自動解析並備份至 `CTdose_eval.db`，完成後更新最後讀取日期並自動結束。不產生 `output/` CSV 報表。
 
 ---
 
